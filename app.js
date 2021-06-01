@@ -28,9 +28,7 @@ let countFail = 0;
                 if (resp.statusCode !== 200) throw `Token 可能過期了，目前 StatusCode: ${resp.statusCode}`;
                 const { data } = resp.body.data;
                 Array.from(data).forEach((post) => {
-                    console.log(post.updatetime, timestamp);
                     if (post.updatetime > timestamp) {
-                        console.log({ post })
                         targetData.push(`https://rent.591.com.tw/rent-detail-${post.id}.html`);
                     }
                 });
