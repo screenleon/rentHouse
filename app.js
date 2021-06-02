@@ -4,6 +4,8 @@ const { getRequest } = require('./lib/request');
 const sendLineNotify = require('./lib/sendLineNotify');
 const getToken = require('./lib/getToken');
 
+const targetUrls = (process.env.TARGET_URL).split(';');
+const lineTokens = (process.env.LINE_NOTIFY_TOKEN).split(';');
 let nowTimestamp = Math.floor(Date.now() / 1000);
 let stopIntervalId;
 let countFail = 0;
@@ -11,9 +13,10 @@ let countFail = 0;
 (() => {
     stopIntervalId = setInterval(async () => {
         console.log(`${new Date()}: '我還活著'`);
+        const targetData = [];
+
         try {
-            process.env.TARGET_URL.split(';').forEach(async (targetUrl) => {
-                const targetData = [];
+            for (const targetUrl of targetUrls) {
                 const timestamp = nowTimestamp;
                 const [csrf_token, cookie] = await getToken();
                 const resp = await getRequest({
@@ -32,19 +35,22 @@ let countFail = 0;
                         targetData.push(`https://rent.591.com.tw/rent-detail-${post.id}.html`);
                     }
                 });
-
-                process.env.LINE_NOTIFY_TOKEN.split(';').forEach((token) => {
-                    for (let index = 0; index * 5 < targetData.length; index++) {
-                        sendLineNotify(`\n${targetData.slice(index * 5, index * 5 + 5).join("\n")}`, token);
-                    }
-                })
-            })
+            }
 
             // Update current timestamp
             nowTimestamp = Math.floor(Date.now() / 1000);
+
+            for(const token of lineTokens) {
+                // Each message display 5 webinfo at most 
+                for(let index = 0; index * 5 < targetData.length; index++) {
+                    sendLineNotify(`\n${targetData.slice(index * 5, index * 5 + 5).join("\n")}`, token);
+                }
+            }
         } catch (error) {
             if (countFail > 10) {
-                await sendLineNotify(`\n好像出事了! 但是我嘗試重新拿 Token 第 ${countFail} 次了所以暫時先把程式關閉，有空可以檢查一下。\n `, process.env.LINE_NOTIFY_TOKEN);
+                for(const token of lineTokens) {
+                    sendLineNotify(`\n好像出事了! 但是我嘗試重新拿 Token 第 ${countFail} 次了所以暫時先把程式關閉，有空可以檢查一下。\n `, token);
+                }
                 clearInterval(stopIntervalId);
             }
             console.error(`Fetch the 591 rent fail: ${error}`);
